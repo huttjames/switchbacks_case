@@ -1,0 +1,149 @@
+---
+title: "Switchbacks"
+author: "James Hutt"
+date: "02/07/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(skimr)
+library(gt)
+library(tidyr)
+library(broom)
+library(janitor)
+library(tidyverse)
+library(lubridate)
+```
+
+
+```{r load_data, include=FALSE}
+
+x = read_csv("switchbacks.csv")
+
+x <- x %>%
+  mutate(period_start = dmy_hm(period_start), 
+         treat_int = as.integer(treat), 
+         total_rides = trips_pool + trips_express_pool, 
+         prop_match = total_matches / total_rides, 
+         payout_per_trip = total_driver_payout / total_rides)
+
+```
+
+# Graph of Earnings Over Time 
+
+```{r graph, echo=FALSE}
+
+x %>% 
+  ggplot(aes(period_start, total_driver_payout, color=treat)) + 
+  geom_line()
+
+ggplot(x, aes(treat_int, total_rides)) + 
+  geom_point(aes(color = commute)) + 
+  geom_smooth(method = "glm", se = FALSE, color = "black") +
+  geom_smooth(method = "glm", se = FALSE, aes(color = commute, group = commute)) + 
+  theme_classic() + 
+  labs(title = "Relationship Between Treatment and Total Number of Ride-Sharing Trips",
+       subtitle = "Separated by Commute Time") + 
+  scale_y_continuous(name = "Total Rides") + 
+  scale_x_continuous(name = "Treatment?")  + 
+  scale_color_manual(name = "Commute?", values = c("Blue", "Red"))
+
+ggplot(x, aes(treat_int, prop_match)) + 
+  geom_point(aes(color = commute)) + 
+  geom_smooth(method = "glm", se = FALSE, color = "black") +
+  geom_smooth(method = "glm", se = FALSE, aes(color = commute, group = commute)) + 
+  theme_classic() + 
+  labs(title = "Relationship Between Treatment and Proportion of Matched Rides",
+       subtitle = "Separated by Commute Time") + 
+  scale_y_continuous(name = "Proportion of Matched Rides") + 
+  scale_x_continuous(name = "Treatment?")  + 
+  scale_color_manual(name = "Commute?", values = c("Blue", "Red"))
+
+ggplot(x, aes(treat_int, payout_per_trip)) + 
+  geom_point(aes(color = commute)) + 
+  geom_smooth(method = "glm", se = FALSE, color = "black") +
+  geom_smooth(method = "glm", se = FALSE, aes(color = commute, group = commute)) + 
+  theme_classic() + 
+  labs(title = "Relationship Between Treatment and Average Payout per Trip",
+       subtitle = "Separated by Commute Time") + 
+  scale_y_continuous(name = "Average Payout Per Trip") + 
+  scale_x_continuous(name = "Treatment?")  + 
+  scale_color_manual(name = "Commute?", values = c("Blue", "Red"))
+
+ggplot(x, aes(treat_int, total_driver_payout)) + 
+  geom_point(aes(color = commute)) + 
+  geom_smooth(method = "glm", se = FALSE, color = "black") +
+  geom_smooth(method = "glm", se = FALSE, aes(color = commute, group = commute)) + 
+  theme_classic() + 
+  labs(title = "Relationship Between Treatment and Total Driver Payout",
+       subtitle = "Separated by Commute Time") + 
+  scale_y_continuous(name = "Total Driver Payout") + 
+  scale_x_continuous(name = "Treatment?")  + 
+  scale_color_manual(name = "Commute?", values = c("Blue", "Red"))
+
+
+ggplot(x, aes(treat_int, total_matches)) + 
+  geom_point(aes(color = commute)) + 
+  geom_smooth(method = "glm", se = FALSE, color = "black") +
+  geom_smooth(method = "glm", se = FALSE, aes(color = commute, group = commute)) + 
+  theme_classic() + 
+  labs(title = "Relationship Between Treatment and Total Matches",
+       subtitle = "Separated by Commute Time") + 
+  scale_y_continuous(name = "Total Matches") + 
+  scale_x_continuous(name = "Treatment?")  + 
+  scale_color_manual(name = "Commute?", values = c("Blue", "Red"))
+
+
+ggplot(x, aes(treat_int, total_double_matches)) + 
+  geom_point(aes(color = commute)) + 
+  geom_smooth(method = "glm", se = FALSE, color = "black") +
+  geom_smooth(method = "glm", se = FALSE, aes(color = commute, group = commute)) + 
+  theme_classic() + 
+  labs(title = "Relationship Between Treatment and Total Double Matches",
+       subtitle = "Separated by Commute Time") + 
+  scale_y_continuous(name = "Total Matches") + 
+  scale_x_continuous(name = "Treatment?")  + 
+  scale_color_manual(name = "Commute?", values = c("Blue", "Red"))
+
+```
+
+# Linear Regression Models 
+
+```{r analyse, echo=FALSE}
+
+sb_model_payout <- lm(total_driver_payout ~ treat * commute, data = x)
+
+sb_model_payout %>%
+  tidy(conf.int = TRUE) %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  gt() %>%
+  fmt_number(columns = vars(estimate, conf.low, conf.high), 
+             decimals = 2) %>%
+  tab_header(title = "Effect of Increased Wait Times on Total Driver Earnings",
+     subtitle = "Treatment and Commute are Interacted") %>%
+  cols_label(term = "Variable",
+             estimate = "Estimate",
+             conf.low = "Lower bound",
+             conf.high = "Upper bound")
+
+
+sb_model_canc <- lm(rider_cancellations ~ treat * commute, data = x)
+
+sb_model_canc %>%
+  tidy(conf.int = TRUE) %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  gt() %>%
+  fmt_number(columns = vars(estimate, conf.low, conf.high), 
+             decimals = 2) %>%
+  tab_header(title = "Effect of Increased Wait Times on Rider Cancellations",
+     subtitle = "Treatment and Commute are Interacted") %>%
+  cols_label(term = "Variable",
+             estimate = "Estimate",
+             conf.low = "Lower bound",
+             conf.high = "Upper bound")
+
+
+```
+
