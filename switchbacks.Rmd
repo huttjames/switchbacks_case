@@ -26,7 +26,8 @@ x <- x %>%
   mutate(period_start = dmy_hm(period_start), 
          treat_int = as.integer(treat), 
          total_rides = trips_pool + trips_express_pool, 
-         prop_match = total_matches / total_rides, 
+         prop_match = total_matches / total_rides,
+         prop_match2 = total_double_matches / total_rides,
          payout_per_trip = total_driver_payout / total_rides)
 
 ```
@@ -58,6 +59,17 @@ ggplot(x, aes(treat_int, prop_match)) +
   labs(title = "Relationship Between Treatment and Proportion of Matched Rides",
        subtitle = "Separated by Commute Time") + 
   scale_y_continuous(name = "Proportion of Matched Rides") + 
+  scale_x_continuous(name = "Treatment?")  + 
+  scale_color_manual(name = "Commute?", values = c("Blue", "Red"))
+
+ggplot(x, aes(treat_int, prop_match2)) + 
+  geom_point(aes(color = commute)) + 
+  geom_smooth(method = "glm", se = FALSE, color = "black") +
+  geom_smooth(method = "glm", se = FALSE, aes(color = commute, group = commute)) + 
+  theme_classic() + 
+  labs(title = "Relationship Between Treatment and Proportion of Double Matched Rides",
+       subtitle = "Separated by Commute Time") + 
+  scale_y_continuous(name = "Proportion of Double Matched Rides") + 
   scale_x_continuous(name = "Treatment?")  + 
   scale_color_manual(name = "Commute?", values = c("Blue", "Red"))
 
@@ -144,6 +156,21 @@ sb_model_canc %>%
              conf.low = "Lower bound",
              conf.high = "Upper bound")
 
+
+sb_model_match2 <- lm(prop_match2 ~ treat * commute, data = x)
+
+sb_model_match2 %>%
+  tidy(conf.int = TRUE) %>%
+  select(term, estimate, conf.low, conf.high) %>%
+  gt() %>%
+  fmt_number(columns = vars(estimate, conf.low, conf.high), 
+             decimals = 2) %>%
+  tab_header(title = "Effect of Increased Wait Times on Proportion of Double Matched Trips",
+     subtitle = "Treatment and Commute are Interacted") %>%
+  cols_label(term = "Variable",
+             estimate = "Estimate",
+             conf.low = "Lower bound",
+             conf.high = "Upper bound")
 
 ```
 
